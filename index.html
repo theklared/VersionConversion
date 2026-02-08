@@ -60,6 +60,15 @@
 					<select id="versionSelection"></select>
 				</div>
 
+				<div class="githubAuth">
+					<label for="githubToken">GitHub Token</label>
+					<input id="githubToken" type="password" placeholder="ghp_..." autocomplete="off" />
+					<label for="githubRepo">GitHub Repo Name</label>
+					<input id="githubRepo" type="text" placeholder="mod-conversion" />
+					<button id="githubConnectButton" type="button">Connect GitHub</button>
+					<p id="githubStatus" aria-live="polite"></p>
+				</div>
+
 				<button id="importButton" type="button">Import</button>
 				<input
 					id="fileInput"
@@ -69,6 +78,7 @@
 					hidden
 				/>
 				<button id="convertButton">Convert</button>
+				<button id="publishButton" type="button">Publish to GitHub</button>
 				<button id="downloadButton">Download</button>
 			</div>
 

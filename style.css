@@ -105,6 +105,36 @@ h1 {
 	border-radius: 1.5625rem;
 }
 
+.githubAuth {
+	width: 75%;
+	padding: 0.9375rem;
+	background-color: #191b22;
+	border-radius: 1.5625rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.githubAuth label {
+	font-size: clamp(0.9rem, 1.5vw, 1.5rem);
+}
+
+.githubAuth input {
+	padding: 0.5rem;
+	border: 0.0625rem solid #22242a;
+	background-color: #22242a;
+	color: #b0bac5;
+	font-size: clamp(0.9rem, 1.5vw, 1rem);
+	font-weight: bold;
+	border-radius: 0.5rem;
+}
+
+.githubAuth p {
+	font-size: clamp(0.75rem, 1.2vw, 0.9rem);
+	color: #b0bac5;
+	min-height: 1.2rem;
+}
+
 .version label,
 .modLoader label {
 	font-size: clamp(0.9rem, 1.5vw, 1.5rem);
@@ -122,6 +152,7 @@ h1 {
 
 #importButton,
 #convertButton,
+#publishButton,
 #downloadButton {
 	width: 75%;
 	height: 3rem;
@@ -138,12 +169,17 @@ h1 {
 	border: 0.125rem #2f9645 solid;
 	background-color: #4cce68;
 }
+#publishButton {
+	border: 0.125rem #3b3b8f solid;
+	background-color: #5a5ad6;
+}
 #downloadButton {
 	border: 0.125rem #966e1a solid;
 	background-color: #b48725;
 }
 
 #importButton:hover,
+#publishButton:hover,
 #downloadButton:hover,
 #convertButton:hover,
 .modLoader select:hover,
