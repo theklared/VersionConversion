@@ -120,12 +120,18 @@ h1 {
 	font-weight: bold;
 }
 
+#importButton,
 #convertButton,
 #downloadButton {
 	width: 75%;
 	height: 3rem;
 	border-radius: 1.875rem;
 	color: #fff;
+}
+
+#importButton {
+	border: 0.125rem #2f5f96 solid;
+	background-color: #3c7bd6;
 }
 
 #convertButton {
@@ -137,6 +143,7 @@ h1 {
 	background-color: #b48725;
 }
 
+#importButton:hover,
 #downloadButton:hover,
 #convertButton:hover,
 .modLoader select:hover,

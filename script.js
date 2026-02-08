@@ -317,10 +317,8 @@ function createModSpace(amount) {
 
 const files = [];
 
-function dropHandler(event) {
-	event.preventDefault();
-
-	for (const file of event.dataTransfer.files) {
+function addFiles(fileList) {
+	for (const file of fileList) {
 		const isJar = file.type === "application/java-archive" || file.name.toLowerCase().endsWith(".jar");
 		const isPack = file.name.toLowerCase().endsWith(".mrpack") || file.name.toLowerCase().endsWith(".zip");
 
@@ -333,6 +331,11 @@ function dropHandler(event) {
 	if (dropInfo) dropInfo.remove();
 }
 
+function dropHandler(event) {
+	event.preventDefault();
+	addFiles(event.dataTransfer.files);
+}
+
 const dropZone = document.getElementById("dropZone");
 dropZone.addEventListener("drop", dropHandler);
 dropZone.addEventListener("dragover", (event) => event.preventDefault());
@@ -340,6 +343,14 @@ dropZone.addEventListener("dragover", (event) => event.preventDefault());
 const creators = document.getElementById("creators");
 const links = document.getElementById("links");
 const details = document.getElementById("details");
+
+const importButton = document.getElementById("importButton");
+const fileInput = document.getElementById("fileInput");
+importButton.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", (event) => {
+	addFiles(event.target.files);
+	event.target.value = "";
+});
 
 const convertButton = document.getElementById("convertButton");
 convertButton.addEventListener("click", async function () {
