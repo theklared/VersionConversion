@@ -317,10 +317,8 @@ function createModSpace(amount) {
 
 const files = [];
 
-function dropHandler(event) {
-	event.preventDefault();
-
-	for (const file of event.dataTransfer.files) {
+function addFiles(fileList) {
+	for (const file of fileList) {
 		const isJar = file.type === "application/java-archive" || file.name.toLowerCase().endsWith(".jar");
 		const isPack = file.name.toLowerCase().endsWith(".mrpack") || file.name.toLowerCase().endsWith(".zip");
 
@@ -333,6 +331,11 @@ function dropHandler(event) {
 	if (dropInfo) dropInfo.remove();
 }
 
+function dropHandler(event) {
+	event.preventDefault();
+	addFiles(event.dataTransfer.files);
+}
+
 const dropZone = document.getElementById("dropZone");
 dropZone.addEventListener("drop", dropHandler);
 dropZone.addEventListener("dragover", (event) => event.preventDefault());
@@ -340,6 +343,109 @@ dropZone.addEventListener("dragover", (event) => event.preventDefault());
 const creators = document.getElementById("creators");
 const links = document.getElementById("links");
 const details = document.getElementById("details");
+
+const githubTokenInput = document.getElementById("githubToken");
+const githubRepoInput = document.getElementById("githubRepo");
+const githubConnectButton = document.getElementById("githubConnectButton");
+const githubStatus = document.getElementById("githubStatus");
+const storedToken = sessionStorage.getItem("githubToken");
+if (storedToken) {
+	githubTokenInput.value = storedToken;
+	githubStatus.textContent = "GitHub token loaded for this session.";
+}
+
+function setGithubStatus(message, isError = false) {
+	githubStatus.textContent = message;
+	githubStatus.style.color = isError ? "#ff9999" : "#b0bac5";
+}
+
+githubConnectButton.addEventListener("click", () => {
+	const token = githubTokenInput.value.trim();
+	if (!token) {
+		setGithubStatus("Add a GitHub token to continue.", true);
+		return;
+	}
+
+	sessionStorage.setItem("githubToken", token);
+	setGithubStatus("GitHub token saved for this session.");
+});
+
+const importButton = document.getElementById("importButton");
+const fileInput = document.getElementById("fileInput");
+importButton.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", (event) => {
+	addFiles(event.target.files);
+	event.target.value = "";
+});
+
+async function getGithubUser(token) {
+	const res = await fetch("https://api.github.com/user", {
+		headers: {
+			Authorization: `token ${token}`,
+			Accept: "application/vnd.github+json",
+		},
+	});
+
+	if (!res.ok) {
+		throw new Error("GitHub authentication failed.");
+	}
+
+	return await res.json();
+}
+
+async function createGithubRepo(token, name) {
+	const res = await fetch("https://api.github.com/user/repos", {
+		method: "POST",
+		headers: {
+			Authorization: `token ${token}`,
+			Accept: "application/vnd.github+json",
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			name,
+			private: false,
+			auto_init: true,
+		}),
+	});
+
+	if (!res.ok) {
+		const error = await res.json().catch(() => ({}));
+		throw new Error(error.message || "Failed to create GitHub repo.");
+	}
+
+	return await res.json();
+}
+
+async function uploadGithubFile({ owner, repo, token, path, content, message }) {
+	const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+		method: "PUT",
+		headers: {
+			Authorization: `token ${token}`,
+			Accept: "application/vnd.github+json",
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			message,
+			content,
+		}),
+	});
+
+	if (!res.ok) {
+		const error = await res.json().catch(() => ({}));
+		throw new Error(error.message || `Failed to upload ${path}.`);
+	}
+}
+
+function toBase64(buffer) {
+	let binary = "";
+	const bytes = new Uint8Array(buffer);
+	const chunkSize = 0x8000;
+	for (let i = 0; i < bytes.length; i += chunkSize) {
+		const chunk = bytes.subarray(i, i + chunkSize);
+		binary += String.fromCharCode(...chunk);
+	}
+	return btoa(binary);
+}
 
 const convertButton = document.getElementById("convertButton");
 convertButton.addEventListener("click", async function () {
@@ -356,6 +462,77 @@ convertButton.addEventListener("click", async function () {
 
 	this.textContent = "Convert";
 	this.style.backgroundColor = "#4cce68";
+});
+
+const publishButton = document.getElementById("publishButton");
+publishButton.addEventListener("click", async function () {
+	if (!converterInstance || !converterInstance.downloadReady) {
+		createError("Convert files before publishing to GitHub.");
+		return;
+	}
+
+	const token = githubTokenInput.value.trim();
+	if (!token) {
+		setGithubStatus("Add a GitHub token before publishing.", true);
+		return;
+	}
+
+	const repoName = githubRepoInput.value.trim() || `mod-conversion-${Date.now()}`;
+
+	this.textContent = "Publishing...";
+	this.style.backgroundColor = "transparent";
+
+	try {
+		const user = await getGithubUser(token);
+		const repo = await createGithubRepo(token, repoName);
+
+		const workflow = `name: Build Mods\n\non:\n  push:\n    branches: [main]\n\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - name: Build (if Gradle present)\n        run: |\n          if [ -f gradlew ]; then\n            chmod +x gradlew\n            ./gradlew build\n          else\n            echo \"No Gradle project found.\"\n          fi\n      - name: Upload JARs\n        uses: actions/upload-artifact@v4\n        with:\n          name: built-jars\n          path: \"**/*.jar\"\n`;
+
+		const readme = `# Mod Conversion Output\n\nThis repo was generated by the Version Converter.\n\nConverted files are stored in the repository root.\n`;
+
+		await uploadGithubFile({
+			owner: user.login,
+			repo: repo.name,
+			token,
+			path: ".github/workflows/build.yml",
+			content: btoa(workflow),
+			message: "Add build workflow",
+		});
+
+		await uploadGithubFile({
+			owner: user.login,
+			repo: repo.name,
+			token,
+			path: "README.md",
+			content: btoa(readme),
+			message: "Add README",
+		});
+
+		for (const file of files) {
+			if (!file.converted) continue;
+			const res = await fetch(file.converted.url);
+			if (!res.ok) throw new Error(`Failed to fetch ${file.converted.fileName}.`);
+			const buffer = await res.arrayBuffer();
+			const base64 = toBase64(buffer);
+
+			await uploadGithubFile({
+				owner: user.login,
+				repo: repo.name,
+				token,
+				path: file.converted.fileName,
+				content: base64,
+				message: `Add ${file.converted.fileName}`,
+			});
+		}
+
+		setGithubStatus(`Published to ${repo.full_name}.`);
+	} catch (error) {
+		console.error(error);
+		setGithubStatus(error.message || "Publishing failed.", true);
+	} finally {
+		this.textContent = "Publish to GitHub";
+		this.style.backgroundColor = "#5a5ad6";
+	}
 });
 
 const downloadButton = document.getElementById("downloadButton");
