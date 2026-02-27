@@ -177,7 +177,7 @@ class Converter {
 				const dirHandle = await window.showDirectoryPicker();
 				const active = new Set();
 
-				for (const file of files) {
+				for (const file of files.filter(f => f.converted)) {
 					const task = (async () => {
 						const res = await fetch(file.converted.url);
 						if (!res.ok) throw new Error(`Failed: ${file.converted.url}`);
@@ -202,7 +202,7 @@ class Converter {
 			}
 		}
 
-		const tasks = files.map(async (file) => {
+		const tasks = files.filter(f => f.converted).map(async (file) => {
 			const res = await fetch(file.converted.url);
 			if (!res.ok) throw new Error(`Failed: ${file.converted.url}`);
 			const blob = await res.blob();
